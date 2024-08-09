@@ -29,14 +29,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     model, config = load_checkpoint(args.checkpoint)
     x = torch.randint(0, config.vocab_size, (1, config.max_seq_len // 2))
-    constraints = [
-        torch._export.dynamic_dim(x, 1),
-        torch._export.dynamic_dim(x, 1) <= config.max_seq_len,
-        torch._export.dynamic_dim(x, 1) >= 1,
-    ]
+    seq_dim = torch.export.Dim("seq", min=1, max=config.max_seq_len)
     so_path = torch._export.aot_compile(
         model,
         (x,),
-        constraints=constraints,
+        dynamic_shapes={"tokens": {1: seq_dim}},
         options={"aot_inductor.output_path": args.filepath},
     )
